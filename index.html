@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <title>Shortest Path Finder</title>
+  <!-- Font & Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, system-ui, sans-serif; }
+    body { background: #f0f4f8; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+    .app-wrapper { max-width: 1400px; width: 100%; background: white; border-radius: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.08); overflow: hidden; padding: 24px 28px; transition: all 0.2s; }
+    /* header */
+    .header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .title-group h1 { font-size: 2rem; font-weight: 600; letter-spacing: -0.5px; color: #0b1a2f; display: flex; align-items: center; gap: 10px; }
+    .title-group h1 i { color: #2563eb; }
+    .title-group p { color: #475569; font-size: 0.95rem; margin-top: 2px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 12px 20px; background: #f8fafc; padding: 10px 18px; border-radius: 40px; align-items: center; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 500; color: #1e293b; }
+    .color-box { width: 18px; height: 18px; border-radius: 6px; }
+    /* controls grid */
+    .controls { display: flex; flex-wrap: wrap; gap: 12px 16px; background: #f9fcff; padding: 16px 20px; border-radius: 28px; margin: 12px 0 18px; align-items: center; border: 1px solid #e9edf2; }
+    .control-group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+    .control-group label { font-size: 0.8rem; font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 4px; }
+    select, button { background: white; border: 1px solid #d1d9e6; padding: 8px 14px; border-radius: 40px; font-size: 0.85rem; font-weight: 500; color: #0b1a2f; cursor: pointer; transition: 0.15s; }
+    select:hover, button:hover { border-color: #2563eb; background: #f0f7ff; }
+    button.primary { background: #2563eb; color: white; border: none; padding: 8px 22px; }
+    button.primary:hover { background: #1d4ed8; box-shadow: 0 6px 14px rgba(37,99,235,0.3); }
+    button.secondary { background: #eef2f6; border: none; }
+    button.secondary:hover { background: #e2e8f0; }
+    .speed-selector { display: flex; gap: 6px; align-items: center; }
+    .speed-selector button { padding: 6px 14px; background: transparent; border: 1px solid #d1d9e6; }
+    .speed-selector button.active { background: #2563eb; color: white; border-color: #2563eb; }
+    .toggle-wrap { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 500; }
+    .toggle-wrap input[type="checkbox"] { width: 18px; height: 18px; accent-color: #2563eb; }
+    /* grid */
+    .grid-container { position: relative; margin: 10px 0 16px; border-radius: 24px; overflow: auto; background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px; }
+    .grid { display: grid; grid-template-columns: repeat(30, 1fr); gap: 1px; background: #e2e8f0; }
+    .cell { aspect-ratio: 1 / 1; background: white; transition: background 0.08s, transform 0.05s; cursor: pointer; border-radius: 2px; min-width: 16px; }
+    .cell.start { background: #22c55e; } 
+    .cell.end { background: #ef4444; }
+    .cell.wall { background: #1e293b; }
+    .cell.weight { background: #fbbf24; }
+    .cell.visited { background: #a5b4fc; } 
+    .cell.path { background: #facc15; }
+    .cell.drag-over { transform: scale(0.9); opacity: 0.7; }
+    /* info & result */
+    .info-panel { display: flex; flex-wrap: wrap; gap: 20px; margin: 18px 0 10px; }
+    .algo-info { flex: 2; min-width: 220px; background: #f8fafc; border-radius: 24px; padding: 16px 20px; border: 1px solid #e2e8f0; }
+    .algo-info h3 { font-size: 1rem; margin-bottom: 6px; display: flex; gap: 8px; align-items: center; }
+    .algo-info p { font-size: 0.85rem; color: #334155; line-height: 1.5; }
+    .stats { flex: 1; min-width: 170px; background: #f8fafc; border-radius: 24px; padding: 16px 20px; border: 1px solid #e2e8f0; }
+    .stats div { font-size: 0.85rem; display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #d1d9e6; }
+    .stats div:last-child { border: none; }
+    .comparison { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0 4px; font-size: 0.75rem; color: #1e293b; }
+    .comparison-card { background: #f1f5f9; border-radius: 20px; padding: 8px 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .comparison-card strong { color: #0b1a2f; }
+    @media (max-width: 740px) { .app-wrapper { padding: 16px; } .header { flex-direction: column; align-items: start; gap: 12px; } .legend { width: 100%; justify-content: flex-start; } .controls { flex-direction: column; align-items: stretch; } .control-group { flex-wrap: wrap; } }
+  </style>
+</head>
+<body>
+<div class="app-wrapper" id="app">
+  <!-- header -->
+  <div class="header">
+    <div class="title-group">
+      <h1><i class="fas fa-route"></i> Shortest Path Finder</h1>
+      <p>Visualize how algorithms find the shortest route · click cells to set start (green) / end (red) · drag to move</p>
+    </div>
+    <div class="legend">
+      <span class="legend-item"><span class="color-box" style="background:#22c55e;"></span> Start</span>
+      <span class="legend-item"><span class="color-box" style="background:#ef4444;"></span> End</span>
+      <span class="legend-item"><span class="color-box" style="background:#1e293b;"></span> Wall</span>
+      <span class="legend-item"><span class="color-box" style="background:#fbbf24;"></span> Weight</span>
+      <span class="legend-item"><span class="color-box" style="background:#a5b4fc;"></span> Visited</span>
+      <span class="legend-item"><span class="color-box" style="background:#facc15;"></span> Path</span>
+    </div>
+  </div>
+
+  <!-- controls -->
+  <div class="controls">
+    <div class="control-group">
+      <label><i class="fas fa-code-branch"></i> Algo</label>
+      <select id="algoSelect">
+        <option value="dijkstra">Dijkstra</option>
+        <option value="astar" selected>A*</option>
+        <option value="bfs">BFS</option>
+        <option value="dfs">DFS</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <button class="primary" id="visualizeBtn"><i class="fas fa-play"></i> Visualize</button>
+      <button class="secondary" id="clearPathBtn"><i class="fas fa-undo"></i> Clear Path</button>
+      <button class="secondary" id="clearBoardBtn"><i class="fas fa-trash"></i> Clear Board</button>
+      <button class="secondary" id="mazeBtn"><i class="fas fa-dice"></i> Generate Maze</button>
+    </div>
+    <div class="control-group speed-selector">
+      <label><i class="fas fa-tachometer-alt"></i> Speed</label>
+      <button data-speed="slow" class="active">Slow</button>
+      <button data-speed="medium">Medium</button>
+      <button data-speed="fast">Fast</button>
+    </div>
+    <div class="toggle-wrap">
+      <input type="checkbox" id="diagonalToggle"> <label for="diagonalToggle">Diagonal</label>
+    </div>
+  </div>
+
+  <!-- grid -->
+  <div class="grid-container">
+    <div class="grid" id="gridContainer"></div>
+  </div>
+
+  <!-- info + stats -->
+  <div class="info-panel">
+    <div class="algo-info" id="algoInfoPanel">
+      <h3><i class="fas fa-info-circle"></i> <span id="algoName">A*</span></h3>
+      <p id="algoDescription">Uses heuristic (Manhattan) to find optimal path with weighted cells.</p>
+      <p style="margin-top:6px"><span id="algoGuarantee">✅ Guarantees shortest path</span> · <span id="algoComplexity">O(b^d)</span> · <span id="algoUse">best for weighted grids with clear goal</span></p>
+    </div>
+    <div class="stats" id="statsPanel">
+      <div><span>Status</span> <span id="statusResult">—</span></div>
+      <div><span>Visited</span> <span id="visitedCount">0</span></div>
+      <div><span>Path length</span> <span id="pathLength">—</span></div>
+      <div><span>Total cost</span> <span id="totalCost">—</span></div>
+      <div><span>Time</span> <span id="timeTaken">—</span></div>
+    </div>
+  </div>
+
+  <!-- comparison -->
+  <div class="comparison">
+    <div class="comparison-card"><strong>Dijkstra</strong> weights · shortest</div>
+    <div class="comparison-card"><strong>A*</strong> heuristic · weighted</div>
+    <div class="comparison-card"><strong>BFS</strong> unweighted · shortest</div>
+    <div class="comparison-card"><strong>DFS</strong> traversal · no guarantee</div>
+  </div>
+</div>
+
+<script>
+  (function(){
+    // ----- config -----
+    const ROWS = 20, COLS = 30;
+    let grid = [], start = {r:5,c:5}, end = {r:12,c:22};
+    let walls = new Set(), weights = new Set();
+    let visitedOrder = [], pathNodes = [];
+    let isRunning = false, speed = 100; // ms
+    let diagonal = false;
+    let mouseDown = false, currentMode = 'wall'; // wall, start, end, weight
+
+    // DOM refs
+    const gridEl = document.getElementById('gridContainer');
+    const algoSelect = document.getElementById('algoSelect');
+    const visualizeBtn = document.getElementById('visualizeBtn');
+    const clearPathBtn = document.getElementById('clearPathBtn');
+    const clearBoardBtn = document.getElementById('clearBoardBtn');
+    const mazeBtn = document.getElementById('mazeBtn');
+    const speedBtns = document.querySelectorAll('.speed-selector button');
+    const diagonalToggle = document.getElementById('diagonalToggle');
+    const statusResult = document.getElementById('statusResult');
+    const visitedCount = document.getElementById('visitedCount');
+    const pathLength = document.getElementById('pathLength');
+    const totalCost = document.getElementById('totalCost');
+    const timeTaken = document.getElementById('timeTaken');
+    const algoName = document.getElementById('algoName');
+    const algoDescription = document.getElementById('algoDescription');
+    const algoGuarantee = document.getElementById('algoGuarantee');
+    const algoComplexity = document.getElementById('algoComplexity');
+    const algoUse = document.getElementById('algoUse');
+
+    // helpers
+    function cellId(r,c){ return `${r},${c}`; }
+    function inBounds(r,c){ return r>=0 && r<ROWS && c>=0 && c<COLS; }
+    function isStart(r,c){ return r===start.r && c===start.c; }
+    function isEnd(r,c){ return r===end.r && c===end.c; }
+    function isWall(r,c){ return walls.has(cellId(r,c)); }
+    function isWeight(r,c){ return weights.has(cellId(r,c)); }
+
+    // build grid
+    function buildGrid(){
+      gridEl.style.gridTemplateColumns = `repeat(${COLS}, 1fr)`;
+      gridEl.innerHTML = '';
+      for(let r=0; r<ROWS; r++){
+        for(let c=0; c<COLS; c++){
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.dataset.r = r; cell.dataset.c = c;
+          cell.dataset.id = cellId(r,c);
+          gridEl.appendChild(cell);
+        }
+      }
+      renderGrid();
+    }
+
+    function renderGrid(){
+      const cells = gridEl.children;
+      for(let r=0; r<ROWS; r++){
+        for(let c=0; c<COLS; c++){
+          const idx = r*COLS + c;
+          const el = cells[idx];
+          el.className = 'cell';
+          if(isStart(r,c)) el.classList.add('start');
+          else if(isEnd(r,c)) el.classList.add('end');
+          else if(isWall(r,c)) el.classList.add('wall');
+          else if(isWeight(r,c)) el.classList.add('weight');
+          // visited & path are cleared via classList removal
+        }
+      }
+      // reapply path/visited if any
+      pathNodes.forEach(({r,c}) => {
+        const idx = r*COLS + c;
+        if(idx >=0 && idx < gridEl.children.length) {
+          const el = gridEl.children[idx];
+          if(!isStart(r,c) && !isEnd(r,c)) el.classList.add('path');
+        }
+      });
+      visitedOrder.forEach(({r,c}) => {
+        const idx = r*COLS + c;
+        if(idx >=0 && idx < gridEl.children.length) {
+          const el = gridEl.children[idx];
+          if(!isStart(r,c) && !isEnd(r,c) && !isWall(r,c) && !isWeight(r,c)) el.classList.add('visited');
+        }
+      });
+    }
+
+    // ----- event listeners for drawing -----
+    function handleMouseDown(e){
+      const cell = e.target.closest('.cell');
+      if(!cell || isRunning) return;
+      const r = +cell.dataset.r, c = +cell.dataset.c;
+      if(isStart(r,c)) { currentMode = 'start'; mouseDown = true; return; }
+      if(isEnd(r,c)) { currentMode = 'end'; mouseDown = true; return; }
+      // toggle wall / weight
+      if(isWall(r,c)){ walls.delete(cellId(r,c)); renderGrid(); currentMode = 'wall'; mouseDown = true; return; }
+      if(isWeight(r,c)){ weights.delete(cellId(r,c)); renderGrid(); currentMode = 'weight'; mouseDown = true; return; }
+      // default place wall
+      walls.add(cellId(r,c));
+      renderGrid();
+      currentMode = 'wall';
+      mouseDown = true;
+    }
+
+    function handleMouseOver(e){
+      if(!mouseDown || isRunning) return;
+      const cell = e.target.closest('.cell');
+      if(!cell) return;
+      const r = +cell.dataset.r, c = +cell.dataset.c;
+      if(isStart(r,c) || isEnd(r,c)) return;
+      if(currentMode === 'wall'){
+        if(isWeight(r,c)) weights.delete(cellId(r,c));
+        walls.add(cellId(r,c));
+        renderGrid();
+      } else if(currentMode === 'weight'){
+        if(isWall(r,c)) walls.delete(cellId(r,c));
+        weights.add(cellId(r,c));
+        renderGrid();
+      } else if(currentMode === 'start'){
+        if(isEnd(r,c)) return;
+        const old = {r:start.r, c:start.c};
+        if(!isWall(r,c) && !isWeight(r,c)){
+          start.r = r; start.c = c;
+          renderGrid();
+        }
+      } else if(currentMode === 'end'){
+        if(isStart(r,c)) return;
+        if(!isWall(r,c) && !isWeight(r,c)){
+          end.r = r; end.c = c;
+          renderGrid();
+        }
+      }
+    }
+
+    function handleMouseUp(e){ mouseDown = false; }
+
+    // drag start/end (reuse)
+    gridEl.addEventListener('mousedown', handleMouseDown);
+    gridEl.addEventListener('mouseover', handleMouseOver);
+    document.addEventListener('mouseup', handleMouseUp);
+    // touch support
+    gridEl.addEventListener('touchstart', (e) => {
+      const touch = e.touches[0];
+      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+      if(el) handleMouseDown({ target: el, preventDefault: ()=>{} });
+    }, {passive: true});
+    gridEl.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+      if(el) handleMouseOver({ target: el });
+    }, {passive: false});
+    gridEl.addEventListener('touchend', (e) => { mouseDown = false; });
+
+    // ----- algorithm logic (simplified) -----
+    function getNeighbors(r,c){
+      const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+      if(diagonal) dirs.push([-1,-1],[-1,1],[1,-1],[1,1]);
+      const result = [];
+      for(let [dr,dc] of dirs){
+        const nr = r+dr, nc = c+dc;
+        if(inBounds(nr,nc) && !isWall(nr,nc)) {
+          const cost = isWeight(nr,nc) ? 5 : 1;
+          result.push({r:nr, c:nc, cost});
+        }
+      }
+      return result;
+    }
+
+    function heuristic(r1,c1,r2,c2){ return Math.abs(r1-r2)+Math.abs(c1-c2); }
+
+    function runAlgorithm(){
+      if(isRunning) return;
+      const algo = algoSelect.value;
+      const startNode = {r:start.r, c:start.c};
+      const endNode = {r:end.r, c:end.c};
+      if(startNode.r===endNode.r && startNode.c===endNode.c) { alert('Start and End cannot be same'); return; }
+      // clear previous
+      visitedOrder = []; pathNodes = [];
+      renderGrid();
+      statusResult.textContent = 'Searching...';
+      const t0 = performance.now();
+
+      let result = null;
+      if(algo === 'dijkstra') result = dijkstra(startNode, endNode);
+      else if(algo === 'astar') result = astar(startNode, endNode);
+      else if(algo === 'bfs') result = bfs(startNode, endNode);
+      else if(algo === 'dfs') result = dfs(startNode, endNode);
+
+      const dt = (performance.now() - t0).toFixed(1);
+      if(result && result.path.length > 0){
+        pathNodes = result.path.slice(1); // exclude start
+        visitedOrder = result.visited;
+        renderGrid();
+        statusResult.textContent = '✅ Path found';
+        pathLength.textContent = pathNodes.length;
+        totalCost.textContent = result.cost || '—';
+        timeTaken.textContent = dt + 'ms';
+        visitedCount.textContent = visitedOrder.length;
+      } else {
+        statusResult.textContent = '❌ No path';
+        pathLength.textContent = '—';
+        totalCost.textContent = '—';
+        timeTaken.textContent = dt + 'ms';
+        visitedCount.textContent = result ? result.visited.length : 0;
+      }
+      isRunning = false;
+    }
+
+    // ---- algorithm implementations ----
+    function dijkstra(start, end){
+      const dist = {}, prev = {}, visited = [];
+      const pq = new MinHeap();
+      const key = (r,c)=>`${r},${c}`;
+      dist[key(start.r,start.c)] = 0;
+      pq.push({r:start.r,c:start.c, priority:0});
+      while(!pq.isEmpty()){
+        const {r,c} = pq.pop();
+        const id = key(r,c);
+        if(visited.some(v=>v.r===r && v.c===c)) continue;
+        visited.push({r,c});
+        if(r===end.r && c===end.c) break;
+        for(let n of getNeighbors(r,c)){
+          const nid = key(n.r,n.c);
+          const newDist = dist[id] + n.cost;
+          if(dist[nid]===undefined || newDist < dist[nid]){
+            dist[nid] = newDist;
+            prev[nid] = {r,c};
+            pq.push({r:n.r,c:n.c, priority:newDist});
+          }
+        }
+      }
+      return reconstructPath(prev, start, end, visited);
+    }
+
+    function astar(start, end){
+      const gScore = {}, fScore = {}, prev = {}, visited = [];
+      const key = (r,c)=>`${r},${c}`;
+      const startKey = key(start.r,start.c);
+      gScore[startKey] = 0;
+      fScore[startKey] = heuristic(start.r,start.c,end.r,end.c);
+      const pq = new MinHeap();
+      pq.push({r:start.r,c:start.c, priority:fScore[startKey]});
+      while(!pq.isEmpty()){
+        const {r,c} = pq.pop();
+        const id = key(r,c);
+        if(visited.some(v=>v.r===r && v.c===c)) continue;
+        visited.push({r,c});
+        if(r===end.r && c===end.c) break;
+        for(let n of getNeighbors(r,c)){
+          const nid = key(n.r,n.c);
+          const tentative = gScore[id] + n.cost;
+          if(gScore[nid]===undefined || tentative < gScore[nid]){
+            gScore[nid] = tentative;
+            const f = tentative + heuristic(n.r,n.c,end.r,end.c);
+            fScore[nid] = f;
+            prev[nid] = {r,c};
+            pq.push({r:n.r,c:n.c, priority:f});
+          }
+        }
+      }
+      return reconstructPath(prev, start, end, visited);
+    }
+
+    function bfs(start, end){
+      const queue = [{r:start.r,c:start.c}];
+      const visited = [{r:start.r,c:start.c}];
+      const prev = {};
+      const key = (r,c)=>`${r},${c}`;
+      while(queue.length){
+        const {r,c} = queue.shift();
+        if(r===end.r && c===end.c) break;
+        for(let n of getNeighbors(r,c)){
+          const nid = key(n.r,n.c);
+          if(!visited.some(v=>v.r===n.r && v.c===n.c)){
+            visited.push({r:n.r,c:n.c});
+            prev[nid] = {r,c};
+            queue.push({r:n.r,c:n.c});
+          }
+        }
+      }
+      return reconstructPath(prev, start, end, visited);
+    }
+
+    function dfs(start, end){
+      const stack = [{r:start.r,c:start.c}];
+      const visited = [{r:start.r,c:start.c}];
+      const prev = {};
+      const key = (r,c)=>`${r},${c}`;
+      while(stack.length){
+        const {r,c} = stack.pop();
+        if(r===end.r && c===end.c) break;
+        for(let n of getNeighbors(r,c)){
+          const nid = key(n.r,n.c);
+          if(!visited.some(v=>v.r===n.r && v.c===n.c)){
+            visited.push({r:n.r,c:n.c});
+            prev[nid] = {r,c};
+            stack.push({r:n.r,c:n.c});
+          }
+        }
+      }
+      return reconstructPath(prev, start, end, visited);
+    }
+
+    function reconstructPath(prev, start, end, visited){
+      const path = [];
+      let cur = {r:end.r,c:end.c};
+      const key = (r,c)=>`${r},${c}`;
+      while(cur && !(cur.r===start.r && cur.c===start.c)){
+        path.push({r:cur.r,c:cur.c});
+        cur = prev[key(cur.r,cur.c)] || null;
+      }
+      path.push({r:start.r,c:start.c});
+      path.reverse();
+      const cost = path.reduce((acc,node,idx)=>{
+        if(idx===0) return 0;
+        const prevNode = path[idx-1];
+        const w = isWeight(node.r,node.c) ? 5 : 1;
+        return acc + w;
+      },0);
+      return {path, visited, cost};
+    }
+
+    // MinHeap
+    class MinHeap {
+      constructor(){ this.heap=[]; }
+      push(node){ this.heap.push(node); this.bubbleUp(); }
+      pop(){ if(this.heap.length===1) return this.heap.pop(); const top=this.heap[0]; this.heap[0]=this.heap.pop(); this.sinkDown(); return top; }
+      isEmpty(){ return this.heap.length===0; }
+      bubbleUp(){ let i=this.heap.length-1; while(i>0){ let p=Math.floor((i-1)/2); if(this.heap[p].priority <= this.heap[i].priority) break; [this.heap[p],this.heap[i]]=[this.heap[i],this.heap[p]]; i=p; } }
+      sinkDown(){ let i=0; while(true){ let left=2*i+1,right=2*i+2,small=i; if(left<this.heap.length && this.heap[left].priority<this.heap[small].priority) small=left; if(right<this.heap.length && this.heap[right].priority<this.heap[small].priority) small=right; if(small===i) break; [this.heap[i],this.heap[small]]=[this.heap[small],this.heap[i]]; i=small; } }
+    }
+
+    // ---- UI updates ----
+    function updateAlgoInfo(){
+      const map = {
+        dijkstra: {name:'Dijkstra', desc:'Finds lowest-cost path with weighted edges.', guarantee:'✅ Guarantees shortest path', complexity:'O(V²)', use:'weighted graphs with non-negative weights'},
+        astar: {name:'A*', desc:'Uses Manhattan heuristic to guide search, finds optimal path with weights.', guarantee:'✅ Guarantees shortest path', complexity:'O(b^d)', use:'weighted grids with clear goal'},
+        bfs: {name:'BFS', desc:'Explores level by level, finds shortest path in unweighted grid.', guarantee:'✅ Guarantees shortest path (unweighted)', complexity:'O(V+E)', use:'unweighted, shortest hop count'},
+        dfs: {name:'DFS', desc:'Traverses depth-first, does not guarantee shortest path.', guarantee:'❌ No shortest guarantee', complexity:'O(V+E)', use:'exploration, maze generation'}
+      };
+      const val = algoSelect.value;
+      const info = map[val] || map.astar;
+      algoName.textContent = info.name;
+      algoDescription.textContent = info.desc;
+      algoGuarantee.textContent = info.guarantee;
+      algoComplexity.textContent = info.complexity;
+      algoUse.textContent = info.use;
+    }
+    algoSelect.addEventListener('change', updateAlgoInfo);
+    updateAlgoInfo();
+
+    // speed
+    speedBtns.forEach(btn => {
+      btn.addEventListener('click', function(){
+        speedBtns.forEach(b=>b.classList.remove('active'));
+        this.classList.add('active');
+        const s = this.dataset.speed;
+        if(s==='slow') speed = 120;
+        else if(s==='medium') speed = 40;
+        else speed = 5;
+      });
+    });
+
+    // diagonal
+    diagonalToggle.addEventListener('change', (e) => { diagonal = e.target.checked; });
+
+    // buttons
+    visualizeBtn.addEventListener('click', runAlgorithm);
+    clearPathBtn.addEventListener('click', function(){
+      visitedOrder = []; pathNodes = [];
+      renderGrid();
+      statusResult.textContent = '—';
+      visitedCount.textContent = '0';
+      pathLength.textContent = '—';
+      totalCost.textContent = '—';
+      timeTaken.textContent = '—';
+    });
+    clearBoardBtn.addEventListener('click', function(){
+      walls.clear(); weights.clear();
+      visitedOrder = []; pathNodes = [];
+      start = {r:5,c:5}; end = {r:12,c:22};
+      renderGrid();
+      statusResult.textContent = '—';
+      visitedCount.textContent = '0';
+      pathLength.textContent = '—';
+      totalCost.textContent = '—';
+      timeTaken.textContent = '—';
+    });
+    mazeBtn.addEventListener('click', function(){
+      // simple random maze
+      walls.clear(); weights.clear();
+      for(let i=0;i<ROWS*COLS*0.2;i++){
+        const r = Math.floor(Math.random()*ROWS), c=Math.floor(Math.random()*COLS);
+        if(!isStart(r,c) && !isEnd(r,c)) walls.add(cellId(r,c));
+      }
+      renderGrid();
+    });
+
+    // init
+    buildGrid();
+  })();
+</script>
+</body>
+</html>
